@@ -1,6 +1,7 @@
 import zmq
 import pickle
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 class RobotAPI:
@@ -72,9 +73,44 @@ class RobotAPI:
         
         success = reply["success"]
         return success
+    
+    def getImageAndDepth(self, sensor_name: str) -> tuple[np.ndarray, np.ndarray]:
+
+        message = {}
+        message["command"] = "getImageAndDepth"
+        message["sensor_name"] = sensor_name
+
+        reply = self.send_message(message)
+        
+        success = reply["success"]
+        if success:
+            
+            if self.verbose > 1:
+                fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+
+                axes[0].imshow(reply["rgb"])
+                axes[0].axis('off')
+                axes[0].set_title('RGB')
+
+                axes[1].imshow(reply["depth"])
+                axes[1].axis('off')
+                axes[1].set_title('Depth')
+
+                plt.tight_layout()
+                plt.show()
+                
+            return reply["rgb"], reply["depth"]
+        
+        return np.array([]), np.array([])
 
 
 if __name__ == "__main__":
-    robot_api = RobotAPI(verbose=1)
+
+    robot_api = RobotAPI(verbose=2)
+    # robot_api = RobotAPI(address="tcp://130.149.82.15:1234", verbose=1)
+    
     robot_api.home()
+    
+    rgb, depth = robot_api.getImageAndDepth("camera")
+    
     robot_api.close()

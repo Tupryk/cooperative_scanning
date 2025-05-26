@@ -26,25 +26,34 @@ class RobotServer:
         to_send = pickle.dumps(message)
         self.socket.send(to_send)
 
-    def execute_command(self, message: dict):
+    def execute_command(self, message: dict) -> dict:
 
-        if message["command"] == "move":
+        feedback = {}
+        command = message["command"]
+        if command == "move":
         
             self.bot.move(message["path"], message["times"])
             while self.bot.getTimeToEnd() > 0:
                 self.bot.sync(self.C)
 
-        elif message["command"] == "moveAutoTimed":
+        elif command == "moveAutoTimed":
         
             self.bot.moveAutoTimed(message["path"], message["time_cost"])
             while self.bot.getTimeToEnd() > 0:
                 self.bot.sync(self.C)
 
-        elif message["command"] == "home":
+        elif command == "home":
             self.bot.home(self.C)
+
+        elif command == "getImageAndDepth":
+            rgb, depth = self.bot.getImageAndDepth(message["sensor_name"])
+            feedback["rgb"] = rgb
+            feedback["depth"] = depth
         
         else:
             raise Exception(f"Command {message['command']} not implemented.")
+        
+        return feedback
         
     def run(self):
 
@@ -66,7 +75,7 @@ class RobotServer:
                 if client_input["command"] == "close":
                     running = False
                 else:
-                    self.execute_command(client_input)
+                    feedback = self.execute_command(client_input)
 
             except Exception as e:
                 self.send_error_message(f"Error while executing command: {e}")
@@ -74,6 +83,11 @@ class RobotServer:
             message = {}
             message["success"] = True
             message["command"] = client_input["command"]
+
+            # Feedback
+            for k, v in feedback.items():
+                message[k] = v
+
             to_send = pickle.dumps(message)
             self.socket.send(to_send)
 
